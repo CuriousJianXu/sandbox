@@ -2,9 +2,9 @@ package usecase
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/rs/zerolog/log"
 	"oproaster.com/sandbox/dto"
 	"oproaster.com/sandbox/repo"
 	genrepo "oproaster.com/sandbox/repo/gen"
@@ -20,39 +20,47 @@ func New(db *sqlx.DB) *Usecase {
 		Repo: repo.New(db),
 	}
 }
-
-func (uc *Usecase) CrawlAndStoreTransactions() {
-	itemID := 25375
-	token, encryptedItemID, err := uc.Repo.GetTokenAndEncryptedItemID(dto.PORING_SERVER, 7, itemID, "強烈靈魂精髓")
+func (uc *Usecase) CrawlAndStoreTransactions(ctx context.Context) {
+	items, err := uc.Repo.SelectItems(ctx)
 	if err != nil {
-		fmt.Println("Error getting token:", err)
+		log.Error().Err(err).Msg("Error getting items")
 		return
 	}
-	// token_ := "ae3b79c7cafd"
-	// token := &token_
-	// encryptedItemID_ := "zbhvGu8RiV0="
-	// encryptedItemID := &encryptedItemID_
-	fmt.Printf("token: %s, encryptedItemID: %v\n", *token, *encryptedItemID)
+	for _, item := range items {
+		if int(item.ID) != 19162 {
+			continue
+		}
+		uc.CrawlAndStoreTransactionsPerItem(ctx, int(item.ID), item.Name.String)
+	}
+}
+
+func (uc *Usecase) CrawlAndStoreTransactionsPerItem(ctx context.Context, itemID int, itemName string) {
+	token, encryptedItemID, err := uc.Repo.GetTokenAndEncryptedItemID(dto.PORING_SERVER, 7, itemID, itemName)
+	if err != nil {
+		log.Error().Err(err).Int("item_id", itemID).Str("item_name", itemName).Msg("Error getting token")
+		return
+	}
+	log.Info().Msgf("token: %s, encryptedItemID: %v\n", *token, *encryptedItemID)
 
 	transactionCount, err := uc.Repo.GetTransactionCount(dto.PORING_SERVER, *encryptedItemID)
 	if err != nil {
-		fmt.Println("Error getting transaction count:", err)
+		log.Error().Err(err).Int("item_id", itemID).Str("item_name", itemName).Msg("Error getting transaction count")
 		return
 	}
-	fmt.Printf("transaction count: %v\n", *transactionCount)
+	log.Info().Int("item_id", itemID).Str("item_name", itemName).Msgf("transaction count: %v\n", *transactionCount)
 
 	localDateYesterday, err := utils.GetLocalTimeInTaipei(1)
 	if err != nil {
-		fmt.Println("Error getting local date yesterday:", err)
+		log.Error().Int("item_id", itemID).Str("item_name", itemName).Err(err).Msg("Error getting local date yesterday")
 		return
 	}
 
 	transactions := make([]dto.TransactionsWithinIntervalEntry, 0)
 	for start := 1; start <= *transactionCount; start += 30 {
-		fmt.Printf("crawl transaction: %03d/%v\n", start, *transactionCount)
+		log.Info().Int("item_id", itemID).Str("item_name", itemName).Msgf("crawl transaction: %03d/%v\n", start, *transactionCount)
 		pTransactions, err := uc.Repo.GetAllTransactionsWithinInterval(dto.PORING_SERVER, *encryptedItemID, *token, start)
 		if err != nil {
-			fmt.Printf("Error getting transactions %03d/%v: %v\n", start, *transactionCount, err)
+			log.Error().Int("item_id", itemID).Str("item_name", itemName).Err(err).Msgf("Error getting transactions %03d/%v\n", start, *transactionCount)
 			return
 		}
 		for i := range pTransactions {
@@ -62,18 +70,18 @@ func (uc *Usecase) CrawlAndStoreTransactions() {
 			}
 		}
 	}
-	fmt.Printf("transactions: %+v\n", transactions)
+	// log.Info().Int("item_id", itemID).Str("item_name", itemName).Msgf("transactions: %+v\n", transactions)
 
 	for _, t := range transactions {
-		if err := uc.Repo.InsertOrders(context.Background(), genrepo.InsertOrdersParams{
+		if err := uc.Repo.InsertOrders(ctx, genrepo.InsertOrdersParams{
 			Date:   localDateYesterday,
 			ItemID: int32(itemID),
 			Count:  int32(t.Count),
 			Price:  int32(t.Price),
 		}); err != nil {
-			fmt.Printf("Error inserting order: %v, order: %+v\n", err, t)
+			log.Error().Err(err).Int("item_id", itemID).Str("item_name", itemName).Interface("transaction", t).Msg("Error  inserting order")
 			return
 		}
 	}
-	fmt.Printf("done inserting transactions")
+	log.Info().Int("item_id", itemID).Str("item_name", itemName).Msg("done inserting transactions")
 }

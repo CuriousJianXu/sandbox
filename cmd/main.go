@@ -1,7 +1,10 @@
 package main
 
 import (
-	"log"
+	"context"
+
+	"github.com/rs/zerolog/log"
+	_ "oproaster.com/sandbox/pkg/zloginit"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
@@ -12,9 +15,11 @@ func main() {
 	connectionStr := "" // hidden for security reasons
 	db, err := sqlx.Connect("postgres", connectionStr)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatal().Err(err).Send()
 	}
 
 	uc := usecase.New(db)
-	uc.CrawlAndStoreTransactions()
+
+	ctx := context.Background()
+	uc.CrawlAndStoreTransactions(ctx)
 }

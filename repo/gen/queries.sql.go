@@ -35,3 +35,31 @@ func (q *Queries) InsertOrders(ctx context.Context, arg InsertOrdersParams) erro
 	)
 	return err
 }
+
+const SelectItems = `-- name: SelectItems :many
+SELECT id, name FROM items
+ORDER BY id
+`
+
+func (q *Queries) SelectItems(ctx context.Context) ([]Item, error) {
+	rows, err := q.query(ctx, q.selectItemsStmt, SelectItems)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Item
+	for rows.Next() {
+		var i Item
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

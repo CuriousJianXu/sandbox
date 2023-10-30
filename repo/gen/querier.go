@@ -10,6 +10,7 @@ import (
 
 type Querier interface {
 	InsertOrders(ctx context.Context, arg InsertOrdersParams) error
+	SelectItems(ctx context.Context) ([]Item, error)
 }
 
 var _ Querier = (*Queries)(nil)
