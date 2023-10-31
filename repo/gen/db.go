@@ -30,6 +30,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.selectItemsStmt, err = db.PrepareContext(ctx, SelectItems); err != nil {
 		return nil, fmt.Errorf("error preparing query SelectItems: %w", err)
 	}
+	if q.selectOrdersByItemIDAndDateStmt, err = db.PrepareContext(ctx, SelectOrdersByItemIDAndDate); err != nil {
+		return nil, fmt.Errorf("error preparing query SelectOrdersByItemIDAndDate: %w", err)
+	}
 	return &q, nil
 }
 
@@ -43,6 +46,11 @@ func (q *Queries) Close() error {
 	if q.selectItemsStmt != nil {
 		if cerr := q.selectItemsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing selectItemsStmt: %w", cerr)
+		}
+	}
+	if q.selectOrdersByItemIDAndDateStmt != nil {
+		if cerr := q.selectOrdersByItemIDAndDateStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing selectOrdersByItemIDAndDateStmt: %w", cerr)
 		}
 	}
 	return err
@@ -82,17 +90,19 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 }
 
 type Queries struct {
-	db               DBTX
-	tx               *sql.Tx
-	insertOrdersStmt *sql.Stmt
-	selectItemsStmt  *sql.Stmt
+	db                              DBTX
+	tx                              *sql.Tx
+	insertOrdersStmt                *sql.Stmt
+	selectItemsStmt                 *sql.Stmt
+	selectOrdersByItemIDAndDateStmt *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
-		db:               tx,
-		tx:               tx,
-		insertOrdersStmt: q.insertOrdersStmt,
-		selectItemsStmt:  q.selectItemsStmt,
+		db:                              tx,
+		tx:                              tx,
+		insertOrdersStmt:                q.insertOrdersStmt,
+		selectItemsStmt:                 q.selectItemsStmt,
+		selectOrdersByItemIDAndDateStmt: q.selectOrdersByItemIDAndDateStmt,
 	}
 }

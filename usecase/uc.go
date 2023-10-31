@@ -27,20 +27,36 @@ func (uc *Usecase) CrawlAndStoreTransactions(ctx context.Context) {
 		return
 	}
 	for _, item := range items {
-		if int(item.ID) != 19162 {
-			continue
-		}
+		// if int(item.ID) != 19162 {
+		// 	continue
+		// }
 		uc.CrawlAndStoreTransactionsPerItem(ctx, int(item.ID), item.Name.String)
 	}
 }
 
 func (uc *Usecase) CrawlAndStoreTransactionsPerItem(ctx context.Context, itemID int, itemName string) {
+	localDateYesterday, err := utils.GetLocalTimeInTaipei(1)
+	if err != nil {
+		log.Error().Int("item_id", itemID).Str("item_name", itemName).Err(err).Msg("Error getting local date yesterday")
+		return
+	}
+
+	ordersOfYesterday, err := uc.Repo.SelectOrdersByItemIDAndDate(ctx, genrepo.SelectOrdersByItemIDAndDateParams{ItemID: int32(itemID), Date: localDateYesterday})
+	if err != nil {
+		log.Error().Err(err).Int("item_id", itemID).Str("item_name", itemName).Msg("Error getting orders of yesterday")
+		return
+	}
+	if len(ordersOfYesterday) > 0 {
+		log.Info().Err(err).Int("item_id", itemID).Str("item_name", itemName).Msg("The item has been queried and stored")
+		return
+	}
+
 	token, encryptedItemID, err := uc.Repo.GetTokenAndEncryptedItemID(dto.PORING_SERVER, 7, itemID, itemName)
 	if err != nil {
 		log.Error().Err(err).Int("item_id", itemID).Str("item_name", itemName).Msg("Error getting token")
 		return
 	}
-	log.Info().Msgf("token: %s, encryptedItemID: %v\n", *token, *encryptedItemID)
+	log.Info().Int("item_id", itemID).Str("item_name", itemName).Msgf("token: %s, encryptedItemID: %v\n", *token, *encryptedItemID)
 
 	transactionCount, err := uc.Repo.GetTransactionCount(dto.PORING_SERVER, *encryptedItemID)
 	if err != nil {
@@ -48,12 +64,6 @@ func (uc *Usecase) CrawlAndStoreTransactionsPerItem(ctx context.Context, itemID 
 		return
 	}
 	log.Info().Int("item_id", itemID).Str("item_name", itemName).Msgf("transaction count: %v\n", *transactionCount)
-
-	localDateYesterday, err := utils.GetLocalTimeInTaipei(1)
-	if err != nil {
-		log.Error().Int("item_id", itemID).Str("item_name", itemName).Err(err).Msg("Error getting local date yesterday")
-		return
-	}
 
 	transactions := make([]dto.TransactionsWithinIntervalEntry, 0)
 	for start := 1; start <= *transactionCount; start += 30 {

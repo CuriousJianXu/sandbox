@@ -63,3 +63,43 @@ func (q *Queries) SelectItems(ctx context.Context) ([]Item, error) {
 	}
 	return items, nil
 }
+
+const SelectOrdersByItemIDAndDate = `-- name: SelectOrdersByItemIDAndDate :many
+SELECT id, date, item_id, count, price FROM orders
+WHERE item_id=$1
+  AND date=$2
+`
+
+type SelectOrdersByItemIDAndDateParams struct {
+	ItemID int32  `db:"item_id"`
+	Date   string `db:"date"`
+}
+
+func (q *Queries) SelectOrdersByItemIDAndDate(ctx context.Context, arg SelectOrdersByItemIDAndDateParams) ([]Order, error) {
+	rows, err := q.query(ctx, q.selectOrdersByItemIDAndDateStmt, SelectOrdersByItemIDAndDate, arg.ItemID, arg.Date)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Order
+	for rows.Next() {
+		var i Order
+		if err := rows.Scan(
+			&i.ID,
+			&i.Date,
+			&i.ItemID,
+			&i.Count,
+			&i.Price,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

@@ -13,3 +13,7 @@ func (r *Repo) InsertOrders(ctx context.Context, arg genrepo.InsertOrdersParams)
 func (r *Repo) SelectItems(ctx context.Context) ([]genrepo.Item, error) {
 	return r.q.SelectItems(ctx)
 }
+
+func (r *Repo) SelectOrdersByItemIDAndDate(ctx context.Context, arg genrepo.SelectOrdersByItemIDAndDateParams) ([]genrepo.Order, error) {
+	return r.q.SelectOrdersByItemIDAndDate(ctx, arg)
+}
