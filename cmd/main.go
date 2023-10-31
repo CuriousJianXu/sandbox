@@ -1,25 +1,21 @@
 package main
 
 import (
-	"context"
+	"log"
+	"os"
 
-	"github.com/rs/zerolog/log"
-	_ "oproaster.com/sandbox/pkg/zloginit"
-
-	"github.com/jmoiron/sqlx"
-	_ "github.com/lib/pq"
-	"oproaster.com/sandbox/usecase"
+	// Blank-import the function package so the init() runs
+	"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
+	_ "oproaster.com/sandbox"
 )
 
 func main() {
-	connectionStr := "" // hidden for security reasons
-	db, err := sqlx.Connect("postgres", connectionStr)
-	if err != nil {
-		log.Fatal().Err(err).Send()
+	// Use PORT environment variable, or default to 8080.
+	port := "8080"
+	if envPort := os.Getenv("PORT"); envPort != "" {
+		port = envPort
 	}
-
-	uc := usecase.New(db)
-
-	ctx := context.Background()
-	uc.CrawlAndStoreTransactions(ctx)
+	if err := funcframework.Start(port); err != nil {
+		log.Fatalf("funcframework.Start: %v\n", err)
+	}
 }
