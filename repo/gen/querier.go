@@ -10,8 +10,8 @@ import (
 
 type Querier interface {
 	InsertOrders(ctx context.Context, arg InsertOrdersParams) error
-	SelectItems(ctx context.Context) ([]Item, error)
-	SelectOrdersByItemIDAndDate(ctx context.Context, arg SelectOrdersByItemIDAndDateParams) ([]Order, error)
+	SelectItems(ctx context.Context) ([]*Item, error)
+	SelectOrdersByItemIDAndDate(ctx context.Context, arg SelectOrdersByItemIDAndDateParams) ([]*Order, error)
 }
 
 var _ Querier = (*Queries)(nil)

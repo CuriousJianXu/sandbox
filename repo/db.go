@@ -10,10 +10,10 @@ func (r *Repo) InsertOrders(ctx context.Context, arg genrepo.InsertOrdersParams)
 	return r.q.InsertOrders(ctx, arg)
 }
 
-func (r *Repo) SelectItems(ctx context.Context) ([]genrepo.Item, error) {
+func (r *Repo) SelectItems(ctx context.Context) ([]*genrepo.Item, error) {
 	return r.q.SelectItems(ctx)
 }
 
-func (r *Repo) SelectOrdersByItemIDAndDate(ctx context.Context, arg genrepo.SelectOrdersByItemIDAndDateParams) ([]genrepo.Order, error) {
+func (r *Repo) SelectOrdersByItemIDAndDate(ctx context.Context, arg genrepo.SelectOrdersByItemIDAndDateParams) ([]*genrepo.Order, error) {
 	return r.q.SelectOrdersByItemIDAndDate(ctx, arg)
 }

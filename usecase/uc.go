@@ -3,7 +3,7 @@ package usecase
 import (
 	"context"
 
-	"github.com/jmoiron/sqlx"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 	"oproaster.com/sandbox/dto"
 	"oproaster.com/sandbox/repo"
@@ -15,7 +15,7 @@ type Usecase struct {
 	Repo *repo.Repo
 }
 
-func New(db *sqlx.DB) *Usecase {
+func New(db *pgxpool.Pool) *Usecase {
 	return &Usecase{
 		Repo: repo.New(db),
 	}
@@ -30,18 +30,26 @@ func (uc *Usecase) CrawlAndStoreTransactions(ctx context.Context) {
 		// if int(item.ID) != 19162 {
 		// 	continue
 		// }
-		uc.CrawlAndStoreTransactionsPerItem(ctx, int(item.ID), item.Name.String)
+		// for daysBefore := 1; daysBefore <= 5; daysBefore++ {
+		// 	date, err := utils.GetLocalTimeInTaipei(daysBefore)
+		// 	if err != nil {
+		// 		log.Error().Err(err).Msg("Error getting local date yesterday")
+		// 		return
+		// 	}
+		// 	uc.CrawlAndStoreTransactionsPerItem(ctx, int(item.ID), item.Name.String, date)
+		// }
+		date, err := utils.GetLocalTimeInTaipei(1)
+		if err != nil {
+			log.Error().Err(err).Msg("Error getting local date yesterday")
+			return
+		}
+		uc.CrawlAndStoreTransactionsPerItem(ctx, int(item.ID), item.Name.String, date)
 	}
 }
 
-func (uc *Usecase) CrawlAndStoreTransactionsPerItem(ctx context.Context, itemID int, itemName string) {
-	localDateYesterday, err := utils.GetLocalTimeInTaipei(1)
-	if err != nil {
-		log.Error().Int("item_id", itemID).Str("item_name", itemName).Err(err).Msg("Error getting local date yesterday")
-		return
-	}
+func (uc *Usecase) CrawlAndStoreTransactionsPerItem(ctx context.Context, itemID int, itemName string, date string) {
 
-	ordersOfYesterday, err := uc.Repo.SelectOrdersByItemIDAndDate(ctx, genrepo.SelectOrdersByItemIDAndDateParams{ItemID: int32(itemID), Date: localDateYesterday})
+	ordersOfYesterday, err := uc.Repo.SelectOrdersByItemIDAndDate(ctx, genrepo.SelectOrdersByItemIDAndDateParams{ItemID: int32(itemID), Date: date})
 	if err != nil {
 		log.Error().Err(err).Int("item_id", itemID).Str("item_name", itemName).Msg("Error getting orders of yesterday")
 		return
@@ -75,7 +83,7 @@ func (uc *Usecase) CrawlAndStoreTransactionsPerItem(ctx context.Context, itemID 
 		}
 		for i := range pTransactions {
 			pTransaction := pTransactions[i]
-			if pTransaction.Date == localDateYesterday {
+			if pTransaction.Date == date {
 				transactions = append(transactions, pTransaction)
 			}
 		}
@@ -84,12 +92,12 @@ func (uc *Usecase) CrawlAndStoreTransactionsPerItem(ctx context.Context, itemID 
 
 	for _, t := range transactions {
 		if err := uc.Repo.InsertOrders(ctx, genrepo.InsertOrdersParams{
-			Date:   localDateYesterday,
+			Date:   date,
 			ItemID: int32(itemID),
 			Count:  int32(t.Count),
 			Price:  int32(t.Price),
 		}); err != nil {
-			log.Error().Err(err).Int("item_id", itemID).Str("item_name", itemName).Interface("transaction", t).Msg("Error  inserting order")
+			log.Error().Err(err).Int("item_id", itemID).Str("item_name", itemName).Interface("transaction", t).Msg("Error inserting order")
 			return
 		}
 	}

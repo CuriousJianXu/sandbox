@@ -5,12 +5,12 @@
 package genrepo
 
 import (
-	"database/sql"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Item struct {
-	ID   int32          `db:"id"`
-	Name sql.NullString `db:"name"`
+	ID   int32       `db:"id"`
+	Name pgtype.Text `db:"name"`
 }
 
 type Order struct {

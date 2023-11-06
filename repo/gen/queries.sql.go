@@ -27,7 +27,7 @@ type InsertOrdersParams struct {
 }
 
 func (q *Queries) InsertOrders(ctx context.Context, arg InsertOrdersParams) error {
-	_, err := q.exec(ctx, q.insertOrdersStmt, InsertOrders,
+	_, err := q.db.Exec(ctx, InsertOrders,
 		arg.Date,
 		arg.ItemID,
 		arg.Count,
@@ -41,22 +41,19 @@ SELECT id, name FROM items
 ORDER BY id
 `
 
-func (q *Queries) SelectItems(ctx context.Context) ([]Item, error) {
-	rows, err := q.query(ctx, q.selectItemsStmt, SelectItems)
+func (q *Queries) SelectItems(ctx context.Context) ([]*Item, error) {
+	rows, err := q.db.Query(ctx, SelectItems)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Item
+	items := []*Item{}
 	for rows.Next() {
 		var i Item
 		if err := rows.Scan(&i.ID, &i.Name); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
+		items = append(items, &i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -75,13 +72,13 @@ type SelectOrdersByItemIDAndDateParams struct {
 	Date   string `db:"date"`
 }
 
-func (q *Queries) SelectOrdersByItemIDAndDate(ctx context.Context, arg SelectOrdersByItemIDAndDateParams) ([]Order, error) {
-	rows, err := q.query(ctx, q.selectOrdersByItemIDAndDateStmt, SelectOrdersByItemIDAndDate, arg.ItemID, arg.Date)
+func (q *Queries) SelectOrdersByItemIDAndDate(ctx context.Context, arg SelectOrdersByItemIDAndDateParams) ([]*Order, error) {
+	rows, err := q.db.Query(ctx, SelectOrdersByItemIDAndDate, arg.ItemID, arg.Date)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Order
+	items := []*Order{}
 	for rows.Next() {
 		var i Order
 		if err := rows.Scan(
@@ -93,10 +90,7 @@ func (q *Queries) SelectOrdersByItemIDAndDate(ctx context.Context, arg SelectOrd
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
+		items = append(items, &i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
